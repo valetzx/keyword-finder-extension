@@ -24,6 +24,18 @@ function updateProgress(current, total, message) {
   console.log(message, current, '/', total);
 }
 
+// 转义 HTML 并高亮关键字
+function highlightKeywords(text, keywords) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  let escaped = div.innerHTML;
+  for (const kw of keywords) {
+    const reg = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    escaped = escaped.replace(reg, '<mark>$&</mark>');
+  }
+  return escaped;
+}
+
 // 主流程：读取 URL、关键字列表、抓取页面并搜索
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
@@ -93,8 +105,9 @@ document.getElementById('runBtn').addEventListener('click', async () => {
             const anchor = url + fragment;
             console.log(`Found '${key}' in content:`, contentText);
             const row = document.createElement('tr');
+            const html = highlightKeywords(contentText, keys);
             row.innerHTML = `
-              <td>${contentText.replace(/</g, '&lt;')}</td>
+              <td>${html}</td>
               <td><a href="${anchor}" target="_blank">直达</a></td>
               <td><a href="${url}" target="_blank">${url}</a></td>
             `;
@@ -122,6 +135,16 @@ document.getElementById('clearCacheBtn').addEventListener('click', () => {
 
 // 页面加载时检查缓存
 document.addEventListener('DOMContentLoaded', () => {
+  if (location.hash === '#inTab') {
+    document.body.classList.add('inTab');
+  } else {
+    const btn = document.getElementById('openInTabBtn');
+    btn.style.display = 'inline-block';
+    btn.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('popup.html#inTab') });
+    });
+  }
+
   const hasCache = localStorage.getItem('urls') && localStorage.getItem('keys');
   if (hasCache) {
     document.getElementById('progressContainer').hidden = false;

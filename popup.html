@@ -6,9 +6,12 @@
   <title>Keyword Finder</title>
   <style>
     body { font-family: sans-serif; margin: 10px; width: 500px; }
+    body.inTab { width: auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    body.inTab table { width: auto; }
     th, td { border: 1px solid #ccc; padding: 5px; word-break: break-all; }
     th { background: #f5f5f5; }
+    #openInTabBtn { display: none; margin-bottom: 10px; }
     #progressContainer { margin-top: 10px; }
     #progressBar { width: 100%; }
     #status { margin-top: 5px; font-size: 0.9em; color: #555; }
@@ -16,6 +19,7 @@
 </head>
 <body>
   <h2>Keyword Finder</h2>
+  <button id="openInTabBtn">#inTab</button>
   <div>
     <label>URL 列表 (url.txt):</label><br>
     <input type="file" id="urlFile" accept=".txt"><br><br>
