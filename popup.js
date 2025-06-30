@@ -118,8 +118,12 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           const link = row.querySelector('.direct-link');
           link.addEventListener('click', (e) => {
             e.preventDefault();
-            chrome.storage.local.set({ highlightData: { url: url, keys } }, () => {
-              chrome.tabs.create({ url: anchor });
+            chrome.storage.local.set({ highlightData: { url, keys } }, () => {
+              if (chrome.tabs && chrome.tabs.create) {
+                chrome.tabs.create({ url: anchor });
+              } else {
+                window.open(anchor, '_blank');
+              }
             });
           });
             break;
