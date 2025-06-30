@@ -40,6 +40,18 @@ function highlightKeywordsInText(text, keys) {
   return html;
 }
 
+// 从文本中提取包含关键字的片段，前后保留一定的上下文
+function getSnippet(text, key, context = 30) {
+  const pos = text.toLowerCase().indexOf(key.toLowerCase());
+  if (pos === -1) return text.slice(0, context * 2);
+  const start = Math.max(pos - context, 0);
+  const end = Math.min(pos + key.length + context, text.length);
+  let snippet = text.slice(start, end);
+  if (start > 0) snippet = '…' + snippet;
+  if (end < text.length) snippet += '…';
+  return snippet.trim();
+}
+
 // 主流程：读取 URL、关键字列表、抓取页面并搜索
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
@@ -104,13 +116,14 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           if (pos !== -1) {
             found = true;
             const parentEl = node.parentElement;
-            const contentText = parentEl ? parentEl.textContent.trim() : text;
+            const fullText = parentEl ? parentEl.textContent.trim() : text;
+            const snippet = getSnippet(fullText, key);
             const fragment = `#:~:text=${encodeURIComponent(key)}`;
             const anchor = url + fragment;
-            console.log(`Found '${key}' in content:`, contentText);
+            console.log(`Found '${key}' in content:`, snippet);
           const row = document.createElement('tr');
           row.innerHTML = `
-              <td>${highlightKeywordsInText(contentText, keys)}</td>
+              <td>${highlightKeywordsInText(snippet, keys)}</td>
               <td><a href="#" class="direct-link">直达</a></td>
               <td><a href="${url}" target="_blank">${url}</a></td>
             `;
