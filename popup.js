@@ -24,6 +24,22 @@ function updateProgress(current, total, message) {
   console.log(message, current, '/', total);
 }
 
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function highlightKeywordsInText(text, keys) {
+  let html = escapeHtml(text);
+  for (const key of keys) {
+    if (!key) continue;
+    const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    html = html.replace(regex, '<mark>$&</mark>');
+  }
+  return html;
+}
+
 // 主流程：读取 URL、关键字列表、抓取页面并搜索
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
@@ -92,13 +108,29 @@ document.getElementById('runBtn').addEventListener('click', async () => {
             const fragment = `#:~:text=${encodeURIComponent(key)}`;
             const anchor = url + fragment;
             console.log(`Found '${key}' in content:`, contentText);
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${contentText.replace(/</g, '&lt;')}</td>
-              <td><a href="${anchor}" target="_blank">直达</a></td>
+          const row = document.createElement('tr');
+          row.innerHTML = `
+              <td>${highlightKeywordsInText(contentText, keys)}</td>
+              <td><a href="#" class="direct-link">直达</a></td>
               <td><a href="${url}" target="_blank">${url}</a></td>
             `;
-            tbody.appendChild(row);
+          tbody.appendChild(row);
+          const link = row.querySelector('.direct-link');
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (typeof chrome !== 'undefined' &&
+                chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ highlightData: { url, keys } }, () => {
+                if (chrome.tabs && chrome.tabs.create) {
+                  chrome.tabs.create({ url: anchor });
+                } else {
+                  window.open(anchor, '_blank');
+                }
+              });
+            } else {
+              window.open(anchor, '_blank');
+            }
+          });
             break;
           }
         }
@@ -127,4 +159,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('progressContainer').hidden = false;
     document.getElementById('status').textContent = '已加载缓存，可直接运行';
   }
+
+  if (location.hash === '#inTab') {
+    document.body.style.width = 'auto';
+    const table = document.querySelector('table');
+    if (table) table.style.width = 'auto';
+  }
+
+  const btn = document.getElementById('inTabBtn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const url = (typeof chrome !== 'undefined' &&
+                   chrome.runtime && chrome.runtime.getURL)
+                   ? chrome.runtime.getURL('popup.html#inTab')
+                   : 'popup.html#inTab';
+      if (typeof chrome !== 'undefined' &&
+          chrome.tabs && chrome.tabs.create) {
+        chrome.tabs.create({ url });
+      } else {
+        window.location.href = url;
+      }
+    });
+  }
 });
+
