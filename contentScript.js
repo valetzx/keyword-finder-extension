@@ -33,16 +33,29 @@ function highlightDocument(keys) {
   }
 }
 
+// 从 URL 中解析 :~:text= 片段
+function getTextFragment() {
+  const match = location.href.match(/#:~:text=([^&]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 if (typeof chrome !== 'undefined' &&
     chrome.storage && chrome.storage.local) {
   chrome.storage.local.get('highlightData', data => {
     const info = data.highlightData;
-    if (!info) return;
-    const { url, keys } = info;
-    if (url && Array.isArray(keys) && location.href.startsWith(url)) {
-      highlightDocument(keys);
-      chrome.storage.local.remove('highlightData');
+    if (info) {
+      const { url, keys } = info;
+      if (url && Array.isArray(keys) && location.href.startsWith(url)) {
+        highlightDocument(keys);
+        chrome.storage.local.remove('highlightData');
+        return;
+      }
     }
+    const frag = getTextFragment();
+    if (frag) highlightDocument([frag]);
   });
+} else {
+  const frag = getTextFragment();
+  if (frag) highlightDocument([frag]);
 }
 
