@@ -81,13 +81,14 @@ document.getElementById('runBtn').addEventListener('click', async () => {
       const html = await res.text();
       console.log('Fetched:', url);
 
-      // 提取文本节点并搜索关键字
+      // 提取段落和文本节点，供关键字搜索
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
+      const paragraphs = Array.from(doc.querySelectorAll('p'));
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
       let node;
       const textNodes = [];
-      while (node = walker.nextNode()) {
+      while ((node = walker.nextNode())) {
         const text = node.nodeValue.trim();
         if (text) textNodes.push({ node, text });
       }
@@ -99,42 +100,70 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           continue;
         }
         let found = false;
-        for (const { node, text } of textNodes) {
+
+        // 先在段落中查找关键字
+        for (const p of paragraphs) {
+          const text = p.textContent || '';
           const pos = text.indexOf(key);
           if (pos !== -1) {
             found = true;
-            const parentEl = node.parentElement;
-            const contentText = parentEl ? parentEl.textContent.trim() : text;
-            const fragment = `#:~:text=${encodeURIComponent(key)}`;
-            const anchor = url + fragment;
-            console.log(`Found '${key}' in content:`, contentText);
-          const row = document.createElement('tr');
-          row.innerHTML = `
-              <td>${highlightKeywordsInText(contentText, keys)}</td>
-              <td><a href="#" class="direct-link">直达</a></td>
+            if (!p.id) p.id = `p-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const anchor = url + '#' + p.id;
+            const snippet = text.slice(Math.max(0, pos - 50), pos + key.length + 150);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${highlightKeywordsInText(snippet, keys)}</td>
+              <td><a href="${anchor}" target="_blank">直达</a></td>
               <td><a href="${url}" target="_blank">${url}</a></td>
             `;
-          tbody.appendChild(row);
-          const link = row.querySelector('.direct-link');
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (typeof chrome !== 'undefined' &&
-                chrome.storage && chrome.storage.local) {
-              chrome.storage.local.set({ highlightData: { url, keys } }, () => {
-                if (chrome.tabs && chrome.tabs.create) {
-                  chrome.tabs.create({ url: anchor });
+            tbody.appendChild(row);
+            break;
+          }
+        }
+
+        // 如果段落中未找到，再遍历所有文本节点
+        if (!found) {
+          for (const { node, text } of textNodes) {
+            const pos = text.indexOf(key);
+            if (pos !== -1) {
+              found = true;
+              const parentEl = node.parentElement;
+              const contentText = parentEl ? parentEl.textContent.trim() : text;
+              const fragment = `#:~:text=${encodeURIComponent(key)}`;
+              const anchor = url + fragment;
+              const snippet = contentText.slice(Math.max(0, pos - 50), pos + key.length + 150);
+              console.log(`Found '${key}' in content:`, contentText);
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${highlightKeywordsInText(snippet, keys)}</td>
+                <td><a href="#" class="direct-link">直达</a></td>
+                <td><a href="${url}" target="_blank">${url}</a></td>
+              `;
+              tbody.appendChild(row);
+              const link = row.querySelector('.direct-link');
+              link.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (typeof chrome !== 'undefined' &&
+                    chrome.storage && chrome.storage.local) {
+                  chrome.storage.local.set({ highlightData: { url, keys } }, () => {
+                    if (chrome.tabs && chrome.tabs.create) {
+                      chrome.tabs.create({ url: anchor });
+                    } else {
+                      window.open(anchor, '_blank');
+                    }
+                  });
                 } else {
                   window.open(anchor, '_blank');
                 }
               });
-            } else {
-              window.open(anchor, '_blank');
+              break;
             }
-          });
-            break;
           }
         }
-        if (!found) console.warn(`Keyword '${key}' 未在 ${url} 找到。`);
+
+        if (!found) {
+          console.warn(`Keyword '${key}' 未在 ${url} 找到。`);
+        }
       }
     } catch (e) {
       console.error(`抓取失败 (${url}):`, e);
