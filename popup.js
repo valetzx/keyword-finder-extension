@@ -28,13 +28,26 @@ function updateProgress(current, total, message) {
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
   const keyFiles = document.getElementById('keyFile').files;
-  if (!urlFiles.length || !keyFiles.length) {
+  let urls, keys;
+
+  if (urlFiles.length) {
+    urls = await readLines(urlFiles[0]);
+    localStorage.setItem('urls', JSON.stringify(urls));
+  } else {
+    urls = JSON.parse(localStorage.getItem('urls') || '[]');
+  }
+
+  if (keyFiles.length) {
+    keys = await readLines(keyFiles[0]);
+    localStorage.setItem('keys', JSON.stringify(keys));
+  } else {
+    keys = JSON.parse(localStorage.getItem('keys') || '[]');
+  }
+
+  if (!urls.length || !keys.length) {
     alert('请先选择 url.txt 和 key.txt');
     return;
   }
-
-  const urls = await readLines(urlFiles[0]);
-  const keys = await readLines(keyFiles[0]);
   const tbody = document.querySelector('#resultTable tbody');
   tbody.innerHTML = '';
 
@@ -98,4 +111,20 @@ document.getElementById('runBtn').addEventListener('click', async () => {
 
   updateProgress(total, total, '完成');
   console.log('全部处理完成');
+});
+
+// 清除缓存
+document.getElementById('clearCacheBtn').addEventListener('click', () => {
+  localStorage.removeItem('urls');
+  localStorage.removeItem('keys');
+  alert('已清除缓存');
+});
+
+// 页面加载时检查缓存
+document.addEventListener('DOMContentLoaded', () => {
+  const hasCache = localStorage.getItem('urls') && localStorage.getItem('keys');
+  if (hasCache) {
+    document.getElementById('progressContainer').hidden = false;
+    document.getElementById('status').textContent = '已加载缓存，可直接运行';
+  }
 });
