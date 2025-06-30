@@ -108,13 +108,20 @@ document.getElementById('runBtn').addEventListener('click', async () => {
             const fragment = `#:~:text=${encodeURIComponent(key)}`;
             const anchor = url + fragment;
             console.log(`Found '${key}' in content:`, contentText);
-            const row = document.createElement('tr');
-            row.innerHTML = `
+          const row = document.createElement('tr');
+          row.innerHTML = `
               <td>${highlightKeywordsInText(contentText, keys)}</td>
-              <td><a href="${anchor}" target="_blank">直达</a></td>
+              <td><a href="#" class="direct-link">直达</a></td>
               <td><a href="${url}" target="_blank">${url}</a></td>
             `;
-            tbody.appendChild(row);
+          tbody.appendChild(row);
+          const link = row.querySelector('.direct-link');
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            chrome.storage.local.set({ highlightData: { url: url, keys } }, () => {
+              chrome.tabs.create({ url: anchor });
+            });
+          });
             break;
           }
         }
@@ -162,3 +169,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
