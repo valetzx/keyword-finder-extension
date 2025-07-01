@@ -4,6 +4,7 @@
   "version": "1.0",
   "description": "从指定的 URL 列表中寻找关键字并生成直达链接",
   "permissions": [
+    "storage",
     "scripting",
     "activeTab"
   ],
