@@ -24,6 +24,52 @@ function updateProgress(current, total, message) {
   console.log(message, current, '/', total);
 }
 
+// 从目标链接中提取发布时间和包含"2025"的片段
+async function fetchDetails(link) {
+  try {
+    const res = await fetch(link);
+    const html = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    const dateRegex = /\d{4}[年\/\-\.][0-1]?\d[月\/\-\.][0-3]?\d(?:日)?/;
+    let date = '';
+    let detail = '';
+
+    // 查找含有"发布"字样的元素以获得日期
+    const pubElems = Array.from(doc.querySelectorAll('p,div,span,section,article'));
+    for (const el of pubElems) {
+      const txt = el.textContent.trim();
+      if (txt.includes('发布')) {
+        const m = txt.match(dateRegex);
+        if (m) {
+          date = m[0];
+          break;
+        }
+      }
+    }
+
+    // 搜索包含"2025"的文本片段
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const text = node.nodeValue.trim();
+      const idx = text.indexOf('2025');
+      if (idx !== -1) {
+        const start = Math.max(0, idx - 50);
+        const end = Math.min(text.length, idx + 4 + 150);
+        detail = text.slice(start, end);
+        break;
+      }
+    }
+
+    return { date, detail };
+  } catch (e) {
+    console.error('获取详情失败', e);
+    return { date: '', detail: '' };
+  }
+}
+
 // 主流程：读取文件，抓取页面，查找关键字并插入表格
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
@@ -80,35 +126,43 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           console.warn(`关键字为空，请检查 key.txt 文件格式`);
           continue;
         }
-        textNodes.forEach(({ node, text }, idx) => {
-            const pos = text.indexOf(key);
-            if (pos !== -1) {
-              foundForKey = true;
-              console.log(`Found keyword '${key}' at position ${pos} text node ${idx}`);
+        for (const [idx, { node, text }] of textNodes.entries()) {
+          const pos = text.indexOf(key);
+          if (pos !== -1) {
+            foundForKey = true;
+            console.log(`Found keyword '${key}' at position ${pos} text node ${idx}`);
 
             const snippetStart = Math.max(0, pos - 50);
             const snippetEnd = Math.min(text.length, pos + key.length + 150);
             const snippet = text.slice(snippetStart, snippetEnd);
 
             const dateMatch = snippet.match(dateRegex);
-            const date = dateMatch ? dateMatch[0] : '';
+            let date = dateMatch ? dateMatch[0] : '';
 
-              let link = '';
-              const linkElem = node.parentElement.closest('a');
-              if (linkElem) link = linkElem.getAttribute('href');
+            let link = '';
+            const linkElem = node.parentElement.closest('a');
+            if (linkElem) link = linkElem.getAttribute('href');
 
-              const fullLink = link ? new URL(link, url).href : '';
+          const fullLink = link ? new URL(link, url).href : '';
 
-              const row = document.createElement('tr');
-              row.innerHTML = `
-                <td>${date}</td>
-                <td>${snippet.replace(/</g, '&lt;')}</td>
-                <td>${fullLink ? `<a href="${fullLink}" target="_blank">链接</a>` : ''}</td>
-                <td>${sourceDomain}</td>
-              `;
-            tbody.appendChild(row);
+          let detailText = '';
+          if (fullLink) {
+            const info = await fetchDetails(fullLink);
+            if (info.date) date = info.date; // 使用链接页面中的日期覆盖
+            detailText = info.detail;
           }
-        });
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${date}</td>
+              <td>${snippet.replace(/</g, '&lt;')}</td>
+              <td>${detailText.replace(/</g, '&lt;')}</td>
+              <td>${fullLink ? `<a href="${fullLink}" target="_blank">链接</a>` : ''}</td>
+              <td>${sourceDomain}</td>
+            `;
+          tbody.appendChild(row);
+          }
+        }
         if (!foundForKey) {
           console.warn (`Keyword '${key}' 未在 ${url} 找到。可能原因：关键字大小写不匹配或页面结构不同。`);
         }
