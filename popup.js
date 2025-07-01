@@ -48,7 +48,11 @@ function appendRow(tbody, item, isNew) {
     <td>${item.link ? `<a href="${item.link}" target="_blank">链接</a>` : ''}</td>
     <td>${item.domain}</td>
   `;
-  tbody.appendChild(row);
+  if (isNew && tbody.firstChild) {
+    tbody.insertBefore(row, tbody.firstChild);
+  } else {
+    tbody.appendChild(row);
+  }
 }
 
 // 更新进度条和状态文字
@@ -120,6 +124,12 @@ document.addEventListener('DOMContentLoaded', () => {
   stored.forEach(item => appendRow(tbody, item, false));
   window.cachedUrls = loadStoredList(STORAGE_URLS);
   window.cachedKeys = loadStoredList(STORAGE_KEYS);
+
+  const clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', () => {
+    localStorage.removeItem(STORAGE_RESULTS);
+    tbody.innerHTML = '';
+  });
 });
 
 document.getElementById('runBtn').addEventListener('click', async () => {
