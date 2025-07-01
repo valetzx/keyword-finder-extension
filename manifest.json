@@ -1,21 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Keyword Finder",
-  "version": "1.3",
-  "description": "使用文本片段直接跳转并高亮关键字",
+  "version": "1.0",
+  "description": "从指定的 URL 列表中寻找关键字并生成直达链接",
   "permissions": [
-    "activeTab",
-    "tabs"
+    "scripting",
+    "activeTab"
   ],
   "host_permissions": [
     "<all_urls>"
-  ],
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["contentScript.js"],
-      "run_at": "document_end"
-    }
   ],
   "action": {
     "default_popup": "popup.html"
