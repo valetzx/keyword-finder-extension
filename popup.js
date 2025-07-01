@@ -62,6 +62,7 @@ function updateProgress(current, total, message) {
 }
 
 // 从目标链接中提取发布时间和包含"2025"的片段
+// 从目标链接中提取发布时间和所有包含 "2025" 的片段
 async function fetchDetails(link) {
   try {
     const res = await fetch(link);
@@ -71,7 +72,7 @@ async function fetchDetails(link) {
 
     const dateRegex = /\d{4}[年\/\-\.][0-1]?\d[月\/\-\.][0-3]?\d(?:日)?/;
     let date = '';
-    let detail = '';
+  const details = [];
 
     // 查找含有"发布"字样的元素以获得日期
     const pubElems = Array.from(doc.querySelectorAll('p,div,span,section,article'));
@@ -86,20 +87,21 @@ async function fetchDetails(link) {
       }
     }
 
-    // 搜索包含"2025"的文本片段
+    // 搜索页面中所有包含 "2025" 的文本片段
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
       const text = node.nodeValue.trim();
-      const idx = text.indexOf('2025');
-      if (idx !== -1) {
+      let idx = text.indexOf('2025');
+      while (idx !== -1) {
         const start = Math.max(0, idx - 50);
         const end = Math.min(text.length, idx + 4 + 150);
-        detail = text.slice(start, end);
-        break;
+        details.push(text.slice(start, end));
+        idx = text.indexOf('2025', idx + 4);
       }
     }
 
+    const detail = details.join('<br>');
     return { date, detail };
   } catch (e) {
     console.error('获取详情失败', e);
