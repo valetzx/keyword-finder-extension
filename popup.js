@@ -46,8 +46,11 @@ function exportTableToCsv() {
     const cells = tr.querySelectorAll('td');
     rows.push(Array.from(cells).map(td => td.textContent.trim()));
   });
-  const csv = rows.map(r => r.map(v => '"' + v.replace(/"/g, '""') + '"').join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  
+  // Add UTF-8 BOM at the beginning of the CSV content
+  const csv = '\uFEFF' + rows.map(r => r.map(v => '"' + v.replace(/"/g, '""') + '"').join(',')).join('\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
