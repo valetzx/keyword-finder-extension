@@ -17,6 +17,7 @@ function readLines(file) {
 const STORAGE_URLS = 'urls';
 const STORAGE_KEYS = 'keys';
 const STORAGE_RESULTS = 'results';
+const STORAGE_COL_WIDTHS = 'colWidths';
 
 function loadStoredList(key) {
   try {
@@ -36,6 +37,86 @@ function loadStoredResults() {
 
 function saveStoredResults(results) {
   localStorage.setItem(STORAGE_RESULTS, JSON.stringify(results));
+}
+
+function loadColWidths() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_COL_WIDTHS) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveColWidths(widths) {
+  localStorage.setItem(STORAGE_COL_WIDTHS, JSON.stringify(widths));
+}
+
+function initResizableColumns() {
+  const table = document.getElementById('resultTable');
+  const ths = table.querySelectorAll('th');
+  const widths = loadColWidths();
+  ths.forEach((th, i) => {
+    if (widths[i]) th.style.width = widths[i];
+    const resizer = th.querySelector('.resizer');
+    if (!resizer) return;
+    resizer.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const startX = e.pageX;
+      const startWidth = th.offsetWidth;
+      function onMove(ev) {
+        const newWidth = startWidth + ev.pageX - startX;
+        th.style.width = newWidth + 'px';
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        const w = [];
+        ths.forEach(t => w.push(t.style.width || ''));
+        saveColWidths(w);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
+function parseDate(str) {
+  if (!str) return 0;
+  const cleaned = str.replace(/[年\.\/]/g, '-').replace('月', '-').replace('日', '');
+  const d = new Date(cleaned);
+  return d.getTime() || 0;
+}
+
+function sortTable(index, type, asc) {
+  const tbody = document.querySelector('#resultTable tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    let av = a.children[index].textContent;
+    let bv = b.children[index].textContent;
+    if (type === 'date') {
+      av = parseDate(av);
+      bv = parseDate(bv);
+      return av - bv;
+    }
+    return av.localeCompare(bv);
+  });
+  if (!asc) rows.reverse();
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+function initSortableColumns() {
+  const ths = document.querySelectorAll('#resultTable th');
+  ths.forEach((th, i) => {
+    const type = i === 0 ? 'date' : i === 1 ? 'text' : null;
+    if (!type) return;
+    th.addEventListener('click', () => {
+      const asc = th.dataset.sort !== 'asc';
+      ths.forEach(t => t.classList.remove('sorted-asc', 'sorted-desc'));
+      th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+      th.dataset.sort = asc ? 'asc' : 'desc';
+      sortTable(i, type, asc);
+    });
+  });
 }
 
 function appendRow(tbody, item, isNew) {
@@ -124,6 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
   stored.forEach(item => appendRow(tbody, item, false));
   window.cachedUrls = loadStoredList(STORAGE_URLS);
   window.cachedKeys = loadStoredList(STORAGE_KEYS);
+
+  initResizableColumns();
+  initSortableColumns();
 
   const clearBtn = document.getElementById('clearBtn');
   clearBtn.addEventListener('click', () => {
