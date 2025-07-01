@@ -71,6 +71,13 @@ async function fetchDetails(link) {
 }
 
 // 主流程：读取文件，抓取页面，查找关键字并插入表格
+// 如果地址栏带有 #intab，则放宽页面宽度限制
+document.addEventListener('DOMContentLoaded', () => {
+  if (location.hash === '#intab') {
+    document.body.classList.add('intab');
+  }
+});
+
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
   const keyFiles = document.getElementById('keyFile').files;
