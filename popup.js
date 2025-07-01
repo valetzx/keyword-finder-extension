@@ -173,6 +173,21 @@ document.getElementById('runBtn').addEventListener('click', async () => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
+      // 尝试在标题后寻找日期信息
+      let pageDate = '';
+      const titleEl = doc.querySelector('h1, title, h2');
+      if (titleEl) {
+        let el = titleEl.nextElementSibling;
+        while (el) {
+          const m = el.textContent.trim().match(dateRegex);
+          if (m) {
+            pageDate = m[0];
+            break;
+          }
+          el = el.nextElementSibling;
+        }
+      }
+
       // 使用 TreeWalker 遍历所有文本节点
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
       const textNodes = [];
@@ -202,7 +217,7 @@ document.getElementById('runBtn').addEventListener('click', async () => {
             const snippet = text.slice(snippetStart, snippetEnd);
 
             const dateMatch = snippet.match(dateRegex);
-            let date = dateMatch ? dateMatch[0] : '';
+            let date = dateMatch ? dateMatch[0] : pageDate;
 
             let link = '';
             const linkElem = node.parentElement.closest('a');
