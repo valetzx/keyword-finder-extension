@@ -14,6 +14,35 @@ function readLines(file) {
   });
 }
 
+const STORAGE_URLS = 'urls';
+const STORAGE_KEYS = 'keys';
+const STORAGE_RESULTS = 'results';
+
+function loadStoredResults() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_RESULTS) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveStoredResults(results) {
+  localStorage.setItem(STORAGE_RESULTS, JSON.stringify(results));
+}
+
+function appendRow(tbody, item, isNew) {
+  const star = isNew ? '*' : '';
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${star}${item.date}</td>
+    <td>${item.snippet}</td>
+    <td>${item.detail}</td>
+    <td>${item.link ? `<a href="${item.link}" target="_blank">链接</a>` : ''}</td>
+    <td>${item.domain}</td>
+  `;
+  tbody.appendChild(row);
+}
+
 // 更新进度条和状态文字
 function updateProgress(current, total, message) {
   const progressBar = document.getElementById('progressBar');
@@ -76,6 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (location.hash === '#intab') {
     document.body.classList.add('intab');
   }
+  const tbody = document.querySelector('#resultTable tbody');
+  const stored = loadStoredResults();
+  stored.forEach(item => appendRow(tbody, item, false));
 });
 
 document.getElementById('runBtn').addEventListener('click', async () => {
@@ -88,8 +120,14 @@ document.getElementById('runBtn').addEventListener('click', async () => {
 
   const urls = await readLines(urlFiles[0]);
   const keys = await readLines(keyFiles[0]);
+  localStorage.setItem(STORAGE_URLS, JSON.stringify(urls));
+  localStorage.setItem(STORAGE_KEYS, JSON.stringify(keys));
+
   const tbody = document.querySelector('#resultTable tbody');
   tbody.innerHTML = '';
+  const storedResults = loadStoredResults();
+  storedResults.forEach(item => appendRow(tbody, item, false));
+  const resultsToSave = [...storedResults];
 
   const dateRegex = /\d{4}[年\/\-\.][0-1]?\d[月\/\-\.][0-3]?\d(?:日)?/;
 
@@ -159,15 +197,19 @@ document.getElementById('runBtn').addEventListener('click', async () => {
             detailText = info.detail;
           }
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${date}</td>
-              <td>${snippet.replace(/</g, '&lt;')}</td>
-              <td>${detailText.replace(/</g, '&lt;')}</td>
-              <td>${fullLink ? `<a href="${fullLink}" target="_blank">链接</a>` : ''}</td>
-              <td>${sourceDomain}</td>
-            `;
-          tbody.appendChild(row);
+          const item = {
+            date,
+            snippet: snippet.replace(/</g, '&lt;'),
+            detail: detailText.replace(/</g, '&lt;'),
+            link: fullLink,
+            domain: sourceDomain
+          };
+          const exists = storedResults.some(r =>
+            r.link === item.link && r.snippet === item.snippet && r.date === item.date);
+          if (!exists) {
+            resultsToSave.push(item);
+            appendRow(tbody, item, true);
+          }
           }
         }
         if (!foundForKey) {
@@ -179,6 +221,7 @@ document.getElementById('runBtn').addEventListener('click', async () => {
     }
   }
 
+  saveStoredResults(resultsToSave);
   updateProgress(total, total, `完成`);
   console.log('全部处理完成');
 });
