@@ -135,6 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
   const keyFiles = document.getElementById('keyFile').files;
+  const pageCountInput = document.getElementById('pageCount');
+  const pageCount = parseInt(pageCountInput.value, 10) || 1;
   let urls = [];
   let keys = [];
   if (urlFiles.length && keyFiles.length) {
@@ -152,6 +154,19 @@ document.getElementById('runBtn').addEventListener('click', async () => {
       return;
     }
   }
+
+  // 根据页数展开包含 "${pageNub}" 的 URL
+  const expandedUrls = [];
+  for (const u of urls) {
+    if (u.includes('${pageNub}')) {
+      for (let i = 1; i <= pageCount; i++) {
+        expandedUrls.push(u.replace('${pageNub}', i));
+      }
+    } else {
+      expandedUrls.push(u);
+    }
+  }
+  urls = expandedUrls;
 
   const tbody = document.querySelector('#resultTable tbody');
   tbody.innerHTML = '';
