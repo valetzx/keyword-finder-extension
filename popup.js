@@ -38,6 +38,8 @@ document.getElementById('runBtn').addEventListener('click', async () => {
   const tbody = document.querySelector('#resultTable tbody');
   tbody.innerHTML = '';
 
+  const dateRegex = /\d{4}[年\/\-\.][0-1]?\d[月\/\-\.][0-3]?\d(?:日)?/;
+
   // 显示进度条
   const progressContainer = document.getElementById('progressContainer');
   progressContainer.hidden = false;
@@ -52,8 +54,10 @@ document.getElementById('runBtn').addEventListener('click', async () => {
     console.log(`Fetching (${processed}/${total}):`, url);
     try {
       const res = await fetch(url);
-      const html = await res.text();
-      console.log(`Fetched:`, url);
+        const html = await res.text();
+        console.log(`Fetched:`, url);
+
+        const sourceDomain = new URL(url).hostname;
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
@@ -77,20 +81,31 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           continue;
         }
         textNodes.forEach(({ node, text }, idx) => {
-          const pos = text.indexOf(key);
-          if (pos !== -1) {
-            foundForKey = true;
-            const parent = node.parentElement;
-            if (!parent.id) parent.id = `elem-${idx}-${Date.now()}`;
-            const anchor = url + '#' + parent.id;
-            console.log(`Found keyword '${key}' at position ${pos} text node ${idx}`);
-            const snippet = text.length > 200 ? text.slice(pos, pos + 200) + '...' : text;
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${snippet.replace(/</g, '&lt;')}</td>
-              <td><a href="${anchor}" target="_blank">直达</a></td>
-              <td><a href="${url}" target="_blank">${url}</a></td>
-            `;
+            const pos = text.indexOf(key);
+            if (pos !== -1) {
+              foundForKey = true;
+              console.log(`Found keyword '${key}' at position ${pos} text node ${idx}`);
+
+            const snippetStart = Math.max(0, pos - 50);
+            const snippetEnd = Math.min(text.length, pos + key.length + 150);
+            const snippet = text.slice(snippetStart, snippetEnd);
+
+            const dateMatch = snippet.match(dateRegex);
+            const date = dateMatch ? dateMatch[0] : '';
+
+              let link = '';
+              const linkElem = node.parentElement.closest('a');
+              if (linkElem) link = linkElem.getAttribute('href');
+
+              const fullLink = link ? new URL(link, url).href : '';
+
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${date}</td>
+                <td>${snippet.replace(/</g, '&lt;')}</td>
+                <td>${fullLink ? `<a href="${fullLink}" target="_blank">链接</a>` : ''}</td>
+                <td>${sourceDomain}</td>
+              `;
             tbody.appendChild(row);
           }
         });
