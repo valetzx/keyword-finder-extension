@@ -38,6 +38,24 @@ function saveStoredResults(results) {
   localStorage.setItem(STORAGE_RESULTS, JSON.stringify(results));
 }
 
+function exportTableToCsv() {
+  const rows = [];
+  const headerCells = document.querySelectorAll('#resultTable thead th');
+  rows.push(Array.from(headerCells).map(th => th.textContent.trim()));
+  document.querySelectorAll('#resultTable tbody tr').forEach(tr => {
+    const cells = tr.querySelectorAll('td');
+    rows.push(Array.from(cells).map(td => td.textContent.trim()));
+  });
+  const csv = rows.map(r => r.map(v => '"' + v.replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'results.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function appendRow(tbody, item, isNew) {
   const star = isNew ? '*' : '';
   const row = document.createElement('tr');
@@ -130,6 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem(STORAGE_RESULTS);
     tbody.innerHTML = '';
   });
+
+  const downloadBtn = document.getElementById('downloadCsvBtn');
+  downloadBtn.addEventListener('click', exportTableToCsv);
 });
 
 document.getElementById('runBtn').addEventListener('click', async () => {
