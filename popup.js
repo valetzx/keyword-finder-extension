@@ -18,6 +18,14 @@ const STORAGE_URLS = 'urls';
 const STORAGE_KEYS = 'keys';
 const STORAGE_RESULTS = 'results';
 
+function loadStoredList(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
 function loadStoredResults() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_RESULTS) || '[]');
@@ -108,20 +116,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const tbody = document.querySelector('#resultTable tbody');
   const stored = loadStoredResults();
   stored.forEach(item => appendRow(tbody, item, false));
+  window.cachedUrls = loadStoredList(STORAGE_URLS);
+  window.cachedKeys = loadStoredList(STORAGE_KEYS);
 });
 
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
   const keyFiles = document.getElementById('keyFile').files;
-  if (!urlFiles.length || !keyFiles.length) {
-    alert('请先选择 url.txt 和 key.txt');
-    return;
+  let urls = [];
+  let keys = [];
+  if (urlFiles.length && keyFiles.length) {
+    urls = await readLines(urlFiles[0]);
+    keys = await readLines(keyFiles[0]);
+    localStorage.setItem(STORAGE_URLS, JSON.stringify(urls));
+    localStorage.setItem(STORAGE_KEYS, JSON.stringify(keys));
+    window.cachedUrls = urls;
+    window.cachedKeys = keys;
+  } else {
+    urls = window.cachedUrls || loadStoredList(STORAGE_URLS);
+    keys = window.cachedKeys || loadStoredList(STORAGE_KEYS);
+    if (!urls.length || !keys.length) {
+      alert('请先选择 url.txt 和 key.txt');
+      return;
+    }
   }
-
-  const urls = await readLines(urlFiles[0]);
-  const keys = await readLines(keyFiles[0]);
-  localStorage.setItem(STORAGE_URLS, JSON.stringify(urls));
-  localStorage.setItem(STORAGE_KEYS, JSON.stringify(keys));
 
   const tbody = document.querySelector('#resultTable tbody');
   tbody.innerHTML = '';
