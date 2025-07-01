@@ -44,7 +44,10 @@ function exportTableToCsv() {
   rows.push(Array.from(headerCells).map(th => th.textContent.trim()));
   document.querySelectorAll('#resultTable tbody tr').forEach(tr => {
     const cells = tr.querySelectorAll('td');
-    rows.push(Array.from(cells).map(td => td.textContent.trim()));
+    rows.push(Array.from(cells).map(td => {
+      const link = td.querySelector('a');
+      return link ? link.href : td.textContent.trim();
+    }));
   });
   
   // Add UTF-8 BOM at the beginning of the CSV content
