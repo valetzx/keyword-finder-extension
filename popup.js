@@ -40,7 +40,7 @@ async function fetchDetails(link) {
     const pubElems = Array.from(doc.querySelectorAll('p,div,span,section,article'));
     for (const el of pubElems) {
       const txt = el.textContent.trim();
-      if (txt.includes('发布')) {
+      if (txt.includes('时间')) {
         const m = txt.match(dateRegex);
         if (m) {
           date = m[0];
