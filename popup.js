@@ -104,7 +104,7 @@ async function fetchDetails(link) {
     const detail = details.join('<br>');
     return { date, detail };
   } catch (e) {
-    console.error('获取详情失败', e);
+    console.info('获取详情失败', e);
     return { date: '', detail: '' };
   }
 }
@@ -233,11 +233,11 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           }
         }
         if (!foundForKey) {
-          console.warn (`Keyword '${key}' 未在 ${url} 找到。可能原因：关键字大小写不匹配或页面结构不同。`);
+          console.info (`Keyword '${key}' 未在 ${url} 找到。可能原因：关键字大小写不匹配或页面结构不同。`);
         }
       }
     } catch (e) {
-      console.error(`抓取失败 (${url}):`, e);
+      console.info(`抓取失败 (${url}):`, e);
     }
   }
 
