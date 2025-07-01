@@ -14,6 +14,15 @@ function readLines(file) {
   });
 }
 
+// 简易封装 Chrome 存储 API
+function getStorage(keys) {
+  return new Promise(resolve => chrome.storage.local.get(keys, resolve));
+}
+
+function setStorage(items) {
+  return new Promise(resolve => chrome.storage.local.set(items, resolve));
+}
+
 // 更新进度条和状态文字
 function updateProgress(current, total, message) {
   const progressBar = document.getElementById('progressBar');
@@ -70,26 +79,62 @@ async function fetchDetails(link) {
   }
 }
 
+// 根据结果数组在表格中渲染内容
+function displayResults(rows) {
+  const tbody = document.querySelector('#resultTable tbody');
+  tbody.innerHTML = '';
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.isNew ? '*' : ''}${row.date}</td>
+      <td>${row.snippet.replace(/</g, '&lt;')}</td>
+      <td>${row.detail.replace(/</g, '&lt;')}</td>
+      <td>${row.link ? `<a href="${row.link}" target="_blank">链接</a>` : ''}</td>
+      <td>${row.source}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
 // 主流程：读取文件，抓取页面，查找关键字并插入表格
 // 如果地址栏带有 #intab，则放宽页面宽度限制
 document.addEventListener('DOMContentLoaded', () => {
   if (location.hash === '#intab') {
     document.body.classList.add('intab');
   }
+  getStorage(['cachedResults']).then(data => {
+    if (data.cachedResults) {
+      const rows = data.cachedResults.map(r => ({ ...r, isNew: false }));
+      displayResults(rows);
+    }
+  });
 });
 
 document.getElementById('runBtn').addEventListener('click', async () => {
   const urlFiles = document.getElementById('urlFile').files;
   const keyFiles = document.getElementById('keyFile').files;
-  if (!urlFiles.length || !keyFiles.length) {
-    alert('请先选择 url.txt 和 key.txt');
-    return;
+
+  let urls = [];
+  let keys = [];
+
+  if (urlFiles.length && keyFiles.length) {
+    urls = await readLines(urlFiles[0]);
+    keys = await readLines(keyFiles[0]);
+    await setStorage({ cachedUrls: urls, cachedKeys: keys });
+  } else {
+    const data = await getStorage(['cachedUrls', 'cachedKeys']);
+    urls = data.cachedUrls || [];
+    keys = data.cachedKeys || [];
+    if (!urls.length || !keys.length) {
+      alert('请先选择 url.txt 和 key.txt');
+      return;
+    }
   }
 
-  const urls = await readLines(urlFiles[0]);
-  const keys = await readLines(keyFiles[0]);
-  const tbody = document.querySelector('#resultTable tbody');
-  tbody.innerHTML = '';
+  const stored = await getStorage(['cachedResults']);
+  const existing = stored.cachedResults || [];
+  const unique = new Set(existing.map(r => JSON.stringify(r)));
+  const displayRows = existing.map(r => ({ ...r, isNew: false }));
 
   const dateRegex = /\d{4}[年\/\-\.][0-1]?\d[月\/\-\.][0-3]?\d(?:日)?/;
 
@@ -159,15 +204,19 @@ document.getElementById('runBtn').addEventListener('click', async () => {
             detailText = info.detail;
           }
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${date}</td>
-              <td>${snippet.replace(/</g, '&lt;')}</td>
-              <td>${detailText.replace(/</g, '&lt;')}</td>
-              <td>${fullLink ? `<a href="${fullLink}" target="_blank">链接</a>` : ''}</td>
-              <td>${sourceDomain}</td>
-            `;
-          tbody.appendChild(row);
+            const obj = {
+              date,
+              snippet,
+              detail: detailText,
+              link: fullLink,
+              source: sourceDomain
+            };
+            const keyStr = JSON.stringify(obj);
+            if (!unique.has(keyStr)) {
+              unique.add(keyStr);
+              displayRows.push({ ...obj, isNew: true });
+              existing.push(obj);
+            }
           }
         }
         if (!foundForKey) {
@@ -178,6 +227,9 @@ document.getElementById('runBtn').addEventListener('click', async () => {
       console.error(`抓取失败 (${url}):`, e);
     }
   }
+
+  await setStorage({ cachedResults: existing });
+  displayResults(displayRows);
 
   updateProgress(total, total, `完成`);
   console.log('全部处理完成');
